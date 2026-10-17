@@ -30,7 +30,7 @@ Open http://127.0.0.1:4173. There are no runtime package dependencies. For optio
 
 ## Open AI
 
-The browser lazily loads `@mlc-ai/web-llm@0.2.84` and runs `gemma-2-2b-it-q4f16_1-MLC` locally. Gemma prepares automatically in a background worker when the app opens. No enable switch or settings visit is required; AI actions wait for readiness and report progress. Expect roughly 1.5–2 GB of model downloads and a compatible desktop WebGPU browser. Model downloads, external fonts, and first-time engine loading require network access. Browser caching is best effort.
+The browser loads a pinned, self-hosted copy of `@mlc-ai/web-llm@0.2.84` and runs `gemma-2-2b-it-q4f16_1-MLC` locally. Gemma prepares automatically in a background worker when the app opens. No enable switch or settings visit is required; AI actions wait for readiness and report progress. Expect roughly 1.5–2 GB of model downloads and a compatible desktop WebGPU browser. Model downloads, external fonts, and first-time engine loading require network access. Browser caching is best effort.
 
 Campaign prompts for these two local features are processed on the device, not sent to a hosted inference API. This does not make the whole website offline: fonts and the initial model assets are hosted externally. Gemma is an **open-weight** model under Google's Gemma terms; WebLLM is open-source. The editable template is explicitly labeled and never presented as AI output. Automatic preparation removes setup steps but does not eliminate the first download; hosted inference is still needed for a download-free experience.
 

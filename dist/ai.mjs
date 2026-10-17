@@ -12,7 +12,7 @@ export async function enableAI(onProgress){
   update({loading:true,failed:false,message:'Preparing AI automatically. The first model download can take a few minutes.',progress:0});
   if(!navigator.gpu)throw new Error('Local AI needs a WebGPU-capable browser. Use desktop Chrome or Edge, or continue with the editable brief template.');
   const adapter=await navigator.gpu.requestAdapter();if(!adapter)throw new Error('This device cannot run local AI. You can still negotiate terms and manage collaborations.');
-  const webllm=await import('https://esm.run/@mlc-ai/web-llm@0.2.84');
+  const webllm=await import('./vendor/web-llm.js');
   worker=new Worker(new URL('./ai-worker.mjs',import.meta.url),{type:'module'});
   engine=await webllm.CreateWebWorkerMLCEngine(worker,MODEL_ID,{initProgressCallback:r=>update({message:r.text,progress:r.progress})},{context_window_size:4096});
   update({ready:true,loading:false,failed:false,message:'AI ready · Gemma runs on this device.',progress:1});return engine;
