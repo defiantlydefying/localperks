@@ -14,3 +14,4 @@ async function request(task,input){
 }
 export async function generateBrief(input){return (await request('brief',input)).brief;}
 export async function reviewCaption(campaign,caption){return (await request('review',{deliverables:campaign.deliverables,caption})).text;}
+export async function checkScope(terms,note){return (await request('scope',{terms:{deliverables:terms.deliverables,reward:terms.reward,deadline:terms.deadline,usageRights:terms.usageRights,revisions:terms.revisions},note})).scope;}

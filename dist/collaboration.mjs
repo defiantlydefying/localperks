@@ -49,12 +49,12 @@ export function submitWork(application,role,input){
  const a=structuredClone(application);a.submissions.push({id:crypto.randomUUID(),url:url.href,caption:String(input.caption).slice(0,4000),at:now(),termsVersion:a.terms.version});a.status='Work submitted';delete a.review;
  event(a,'submission','creator',`Creator submitted work against agreement version ${a.terms.version}.`,{version:a.terms.version});return a;
 }
-export function requestChanges(application,role,note){
+export function requestChanges(application,role,note,scope){
  if(role!=='business'||application.status!=='Work submitted'||!agreed(application))throw new Error('Only the business can request changes to submitted work.');
  if(!String(note||'').trim())throw new Error('Describe the changes the creator should make.');
  const used=application.revisionRequests.filter(x=>x.termsVersion===application.terms.version).length;
  if(used>=application.terms.revisions)throw new Error('All agreed revision rounds are used. Propose an amendment for additional work.');
- const a=structuredClone(application);a.revisionRequests.push({id:crypto.randomUUID(),note:String(note).trim().slice(0,2400),at:now(),termsVersion:a.terms.version,round:used+1});a.status='Changes requested';event(a,'revision','business',String(note).trim(),{version:a.terms.version});return a;
+ const a=structuredClone(application);a.revisionRequests.push({id:crypto.randomUUID(),note:String(note).trim().slice(0,2400),at:now(),termsVersion:a.terms.version,round:used+1,...(scope?{scope}:{})});a.status='Changes requested';event(a,'revision','business',String(note).trim(),{version:a.terms.version});return a;
 }
 export function approveWork(application,role){
  const latest=application.submissions.at(-1);
