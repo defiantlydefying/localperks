@@ -1,16 +1,136 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#eeeafa"><meta name="description" content="Local businesses meet local creators. Create clear campaign briefs and manage rewarded collaborations with hosted, open-weight AI.">
-<title>LocalPerks — Create something close to home</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css"><script type="module" src="app.js"></script>
-</head>
-<body>
-<header class="app-header"><a class="brand" href="#" aria-label="LocalPerks home"><span class="brand-mark">lp<span>✳</span></span><span class="brand-word">localperks</span></a><button class="mobile-menu" data-action="toggle-sidebar" aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">☰</button><div class="topbar-context"><span id="role-context">Creator workspace</span><small>Preview both sides of a collaboration</small></div><div id="top-role-switch"></div></header>
-<aside class="sidebar" id="sidebar" aria-label="Workspace navigation"><div class="sidebar-heading">YOUR WORKSPACE</div><nav aria-label="Main navigation"><button class="side-link" data-view="dashboard" aria-label="Dashboard" title="Dashboard"><span class="side-icon">▦</span><span class="side-label">Dashboard</span></button><button class="side-link" id="opportunities-nav" data-view="explore" aria-label="Find opportunities" title="Find opportunities"><span class="side-icon">⌕</span><span class="side-label" id="opportunities-label">Find opportunities</span></button><button class="side-link" data-view="workspace" aria-label="Collaborations" title="Collaborations"><span class="side-icon">↔</span><span class="side-label">Collaborations <span id="workspace-count"></span></span></button><button class="side-link" id="saved-nav" data-view="saved" aria-label="Saved opportunities" title="Saved opportunities"><span class="side-icon">♡</span><span class="side-label">Saved opportunities</span></button></nav><div class="sidebar-heading">CREATE WITH AI</div><nav aria-label="Gemma tools"><button class="side-link" data-view="gemma" aria-label="Gemma studio" title="Gemma studio"><span class="side-icon">✧</span><span class="side-label">Gemma studio<span class="side-tag">AI</span></span></button><button class="side-link" data-action="new" aria-label="Draft a brief" title="Draft a brief"><span class="side-icon">✎</span><span class="side-label">Draft a brief</span></button><button class="side-link" data-action="caption-check" aria-label="Review a caption" title="Review a caption"><span class="side-icon">✓</span><span class="side-label">Review a caption</span></button></nav><div class="sidebar-bottom"><button class="side-link" data-action="settings" aria-label="Settings" title="Settings"><span class="side-icon">⚙</span><span class="side-label">Settings</span></button><button class="side-link" data-action="about" aria-label="How it works" title="How it works"><span class="side-icon">?</span><span class="side-label">How it works</span></button><button class="side-link collapse-sidebar" data-action="toggle-sidebar" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse navigation" title="Collapse navigation"><span class="side-icon" id="collapse-icon">⇤</span><span class="side-label">Collapse sidebar</span></button><a href="/#work" class="portfolio-link">← Emma’s projects</a></div></aside><button class="sidebar-backdrop" data-action="close-sidebar" aria-label="Close navigation"></button>
-<div class="app-content"><div class="demo-banner"><span class="demo-dot"></span> Interactive prototype · Sample listings · Changes stay in this browser</div><main id="main"></main><footer><span>LocalPerks · Good things, close to home.</span><span>Built for Hacktoberfest 2026</span></footer></div>
-<dialog id="modal"><div id="modal-content"></div></dialog><div id="toast" role="status" aria-live="polite"></div>
-</body></html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#eeeafa" />
+    <meta
+      name="description"
+      content="Local businesses meet local creators. Create clear campaign briefs and manage rewarded collaborations with hosted, open-weight AI."
+    />
+    <title>LocalPerks — Create something close to home</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="#" aria-label="LocalPerks home"
+        ><span class="brand-mark">lp<span>✳</span></span
+        ><span class="brand-word">localperks</span></a
+      ><button
+        class="mobile-menu"
+        data-action="toggle-sidebar"
+        aria-controls="sidebar"
+        aria-expanded="false"
+        aria-label="Open navigation"
+      >
+        ☰
+      </button>
+      <div class="topbar-context">
+        <span id="role-context">Creator workspace</span
+        ><small>Preview both sides of a collaboration</small>
+      </div>
+      <div id="top-role-switch"></div>
+    </header>
+    <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
+      <div class="sidebar-heading">YOUR WORKSPACE</div>
+      <nav aria-label="Main navigation">
+        <button class="side-link" data-view="dashboard" aria-label="Dashboard" title="Dashboard">
+          <span class="side-icon">▦</span><span class="side-label">Dashboard</span></button
+        ><button
+          class="side-link"
+          id="opportunities-nav"
+          data-view="explore"
+          aria-label="Find opportunities"
+          title="Find opportunities"
+        >
+          <span class="side-icon">⌕</span
+          ><span class="side-label" id="opportunities-label">Find opportunities</span></button
+        ><button
+          class="side-link"
+          data-view="workspace"
+          aria-label="Collaborations"
+          title="Collaborations"
+        >
+          <span class="side-icon">↔</span
+          ><span class="side-label">Collaborations <span id="workspace-count"></span></span></button
+        ><button
+          class="side-link"
+          id="saved-nav"
+          data-view="saved"
+          aria-label="Saved opportunities"
+          title="Saved opportunities"
+        >
+          <span class="side-icon">♡</span><span class="side-label">Saved opportunities</span>
+        </button>
+      </nav>
+      <div class="sidebar-heading">CREATE WITH AI</div>
+      <nav aria-label="Gemma tools">
+        <button class="side-link" data-view="gemma" aria-label="Gemma studio" title="Gemma studio">
+          <span class="side-icon">✧</span
+          ><span class="side-label">Gemma studio<span class="side-tag">AI</span></span></button
+        ><button
+          class="side-link"
+          data-action="new"
+          aria-label="Draft a brief"
+          title="Draft a brief"
+        >
+          <span class="side-icon">✎</span><span class="side-label">Draft a brief</span></button
+        ><button
+          class="side-link"
+          data-action="caption-check"
+          aria-label="Review a caption"
+          title="Review a caption"
+        >
+          <span class="side-icon">✓</span><span class="side-label">Review a caption</span>
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="side-link" data-action="settings" aria-label="Settings" title="Settings">
+          <span class="side-icon">⚙</span><span class="side-label">Settings</span></button
+        ><button
+          class="side-link"
+          data-action="about"
+          aria-label="How it works"
+          title="How it works"
+        >
+          <span class="side-icon">?</span><span class="side-label">How it works</span></button
+        ><button
+          class="side-link collapse-sidebar"
+          data-action="toggle-sidebar"
+          aria-controls="sidebar"
+          aria-expanded="true"
+          aria-label="Collapse navigation"
+          title="Collapse navigation"
+        >
+          <span class="side-icon" id="collapse-icon">⇤</span
+          ><span class="side-label">Collapse sidebar</span></button
+        ><a href="/#work" class="portfolio-link">← Emma’s projects</a>
+      </div>
+    </aside>
+    <button
+      class="sidebar-backdrop"
+      data-action="close-sidebar"
+      aria-label="Close navigation"
+    ></button>
+    <div class="app-content">
+      <div class="demo-banner">
+        <span class="demo-dot"></span> Interactive prototype · Sample listings · Changes stay in
+        this browser
+      </div>
+      <main id="main"></main>
+      <footer>
+        <span>LocalPerks · Good things, close to home.</span
+        ><span>Built for Hacktoberfest 2026</span>
+      </footer>
+    </div>
+    <dialog id="modal"><div id="modal-content"></div></dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

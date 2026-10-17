@@ -1,14 +1,124 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {initializeCollaboration,sendMessage,proposeTerms,acceptTerms,agreed,submitWork,requestChanges,approveWork} from '../dist/collaboration.mjs';
-const terms={deliverables:'One honest 20-second Reel with clear disclosure',reward:'$75 + coffee',deadline:'2026-10-25',usageRights:'One organic reshare with credit; no paid ads',paymentTiming:'Within 7 days of approval',approvalProcess:'Business checks all agreed deliverables',revisions:1};
-function application(){return initializeCollaboration({id:'a',creator:'Alex',pitch:'An honest café visit',status:'Applied'});}
-function signed(){let a=proposeTerms(application(),'business',terms);a=acceptTerms(a,'business',1);return acceptTerms(a,'creator',1);}
-test('both roles must explicitly accept the same version before work begins',()=>{let a=proposeTerms(application(),'business',terms);assert.equal(a.status,'Negotiating');assert.equal(agreed(a),false);assert.throws(()=>submitWork(a,'creator',{url:'https://example.com',caption:'hello'}));a=acceptTerms(a,'business',1);assert.equal(a.status,'Negotiating');assert.throws(()=>acceptTerms(a,'business',1));a=acceptTerms(a,'creator',1);assert.equal(a.status,'In progress');assert.equal(agreed(a),true);});
-test('a counterproposal preserves prior terms and clears both acceptances',()=>{const original=signed();const next=proposeTerms(original,'creator',{...terms,reward:'$100 + coffee'});assert.equal(original.acceptances.creator.version,1);assert.equal(next.terms.version,2);assert.deepEqual(next.acceptances,{});assert.equal(next.termVersions[0].reward,'$75 + coffee');assert.throws(()=>acceptTerms(next,'business',1),/terms changed/);assert.throws(()=>submitWork(next,'creator',{url:'https://example.com',caption:'hi'}));});
-test('messages are attributed and do not silently modify agreed terms',()=>{const a=signed(),b=sendMessage(a,'creator','Could we move the visit to Friday?');assert.equal(a.messages.length,0);assert.equal(b.messages[0].role,'creator');assert.equal(b.terms.deadline,a.terms.deadline);assert.equal(agreed(b),true);assert.throws(()=>sendMessage(b,'business',''));});
-test('revision allowance is enforced and revised submissions retain history',()=>{let a=signed();a=submitWork(a,'creator',{url:'https://example.com/draft1',caption:'My first caption'});assert.throws(()=>approveWork(a,'creator'));a=requestChanges(a,'business','Include the location as agreed.');assert.equal(a.status,'Changes requested');assert.throws(()=>approveWork(a,'business'));a=submitWork(a,'creator',{url:'https://example.com/draft2',caption:'My café visit in Chicago #ad'});assert.equal(a.submissions.length,2);assert.throws(()=>requestChanges(a,'business','One more change'),/rounds are used/);a=approveWork(a,'business');assert.equal(a.status,'Approved');assert.throws(()=>proposeTerms(a,'creator',terms),/closed/);});
-test('changing terms invalidates approval of an earlier submission',()=>{let a=submitWork(signed(),'creator',{url:'https://example.com/old',caption:'Old scope'});a=proposeTerms(a,'business',{...terms,deliverables:'Two Reels'});a=acceptTerms(a,'business',2);a=acceptTerms(a,'creator',2);assert.throws(()=>approveWork(a,'business'));assert.equal(a.submissions[0].termsVersion,1);});
-test('old demo statuses are preserved without inventing acceptances',()=>{const a=initializeCollaboration({status:'Approved',submission:'https://example.com/old',caption:'old'});assert.equal(a.previousDemoStatus,'Approved');assert.equal(a.submissions[0].legacy,true);assert.equal(agreed(a),false);assert.equal(a.status,'Applied');});
-test('unsafe work links and incomplete terms are rejected',()=>{assert.throws(()=>submitWork(signed(),'creator',{url:'javascript:alert(1)',caption:'x'}));assert.throws(()=>proposeTerms(application(),'business',{...terms,usageRights:''}));assert.throws(()=>proposeTerms(application(),'business',{...terms,revisions:1.5}));assert.throws(()=>proposeTerms(application(),'creator',terms));});
-test('a revision request keeps the advisory scope check it was sent with',()=>{let a=submitWork(signed(),'creator',{url:'https://example.com/reel',caption:'Paid partnership with Sunday Coffee'});const scope={verdict:'within',explanation:'Asks to fix the agreed tag.',outOfScope:[],suggestion:''};a=requestChanges(a,'business','Please tag the café',scope);assert.deepEqual(a.revisionRequests.at(-1).scope,scope);assert.equal(a.status,'Changes requested');});
+import {
+  initializeCollaboration,
+  sendMessage,
+  proposeTerms,
+  acceptTerms,
+  agreed,
+  submitWork,
+  requestChanges,
+  approveWork,
+} from '../dist/collaboration.mjs';
+const terms = {
+  deliverables: 'One honest 20-second Reel with clear disclosure',
+  reward: '$75 + coffee',
+  deadline: '2026-10-25',
+  usageRights: 'One organic reshare with credit; no paid ads',
+  paymentTiming: 'Within 7 days of approval',
+  approvalProcess: 'Business checks all agreed deliverables',
+  revisions: 1,
+};
+function application() {
+  return initializeCollaboration({
+    id: 'a',
+    creator: 'Alex',
+    pitch: 'An honest café visit',
+    status: 'Applied',
+  });
+}
+function signed() {
+  let a = proposeTerms(application(), 'business', terms);
+  a = acceptTerms(a, 'business', 1);
+  return acceptTerms(a, 'creator', 1);
+}
+test('both roles must explicitly accept the same version before work begins', () => {
+  let a = proposeTerms(application(), 'business', terms);
+  assert.equal(a.status, 'Negotiating');
+  assert.equal(agreed(a), false);
+  assert.throws(() => submitWork(a, 'creator', { url: 'https://example.com', caption: 'hello' }));
+  a = acceptTerms(a, 'business', 1);
+  assert.equal(a.status, 'Negotiating');
+  assert.throws(() => acceptTerms(a, 'business', 1));
+  a = acceptTerms(a, 'creator', 1);
+  assert.equal(a.status, 'In progress');
+  assert.equal(agreed(a), true);
+});
+test('a counterproposal preserves prior terms and clears both acceptances', () => {
+  const original = signed();
+  const next = proposeTerms(original, 'creator', { ...terms, reward: '$100 + coffee' });
+  assert.equal(original.acceptances.creator.version, 1);
+  assert.equal(next.terms.version, 2);
+  assert.deepEqual(next.acceptances, {});
+  assert.equal(next.termVersions[0].reward, '$75 + coffee');
+  assert.throws(() => acceptTerms(next, 'business', 1), /terms changed/);
+  assert.throws(() => submitWork(next, 'creator', { url: 'https://example.com', caption: 'hi' }));
+});
+test('messages are attributed and do not silently modify agreed terms', () => {
+  const a = signed(),
+    b = sendMessage(a, 'creator', 'Could we move the visit to Friday?');
+  assert.equal(a.messages.length, 0);
+  assert.equal(b.messages[0].role, 'creator');
+  assert.equal(b.terms.deadline, a.terms.deadline);
+  assert.equal(agreed(b), true);
+  assert.throws(() => sendMessage(b, 'business', ''));
+});
+test('revision allowance is enforced and revised submissions retain history', () => {
+  let a = signed();
+  a = submitWork(a, 'creator', { url: 'https://example.com/draft1', caption: 'My first caption' });
+  assert.throws(() => approveWork(a, 'creator'));
+  a = requestChanges(a, 'business', 'Include the location as agreed.');
+  assert.equal(a.status, 'Changes requested');
+  assert.throws(() => approveWork(a, 'business'));
+  a = submitWork(a, 'creator', {
+    url: 'https://example.com/draft2',
+    caption: 'My café visit in Chicago #ad',
+  });
+  assert.equal(a.submissions.length, 2);
+  assert.throws(() => requestChanges(a, 'business', 'One more change'), /rounds are used/);
+  a = approveWork(a, 'business');
+  assert.equal(a.status, 'Approved');
+  assert.throws(() => proposeTerms(a, 'creator', terms), /closed/);
+});
+test('changing terms invalidates approval of an earlier submission', () => {
+  let a = submitWork(signed(), 'creator', { url: 'https://example.com/old', caption: 'Old scope' });
+  a = proposeTerms(a, 'business', { ...terms, deliverables: 'Two Reels' });
+  a = acceptTerms(a, 'business', 2);
+  a = acceptTerms(a, 'creator', 2);
+  assert.throws(() => approveWork(a, 'business'));
+  assert.equal(a.submissions[0].termsVersion, 1);
+});
+test('old demo statuses are preserved without inventing acceptances', () => {
+  const a = initializeCollaboration({
+    status: 'Approved',
+    submission: 'https://example.com/old',
+    caption: 'old',
+  });
+  assert.equal(a.previousDemoStatus, 'Approved');
+  assert.equal(a.submissions[0].legacy, true);
+  assert.equal(agreed(a), false);
+  assert.equal(a.status, 'Applied');
+});
+test('unsafe work links and incomplete terms are rejected', () => {
+  assert.throws(() =>
+    submitWork(signed(), 'creator', { url: 'javascript:alert(1)', caption: 'x' }),
+  );
+  assert.throws(() => proposeTerms(application(), 'business', { ...terms, usageRights: '' }));
+  assert.throws(() => proposeTerms(application(), 'business', { ...terms, revisions: 1.5 }));
+  assert.throws(() => proposeTerms(application(), 'creator', terms));
+});
+test('a revision request keeps the advisory scope check it was sent with', () => {
+  let a = submitWork(signed(), 'creator', {
+    url: 'https://example.com/reel',
+    caption: 'Paid partnership with Sunday Coffee',
+  });
+  const scope = {
+    verdict: 'within',
+    explanation: 'Asks to fix the agreed tag.',
+    outOfScope: [],
+    suggestion: '',
+  };
+  a = requestChanges(a, 'business', 'Please tag the café', scope);
+  assert.deepEqual(a.revisionRequests.at(-1).scope, scope);
+  assert.equal(a.status, 'Changes requested');
+});
