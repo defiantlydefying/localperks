@@ -25,3 +25,5 @@ services:
         sync: false
       - key: BACKBOARD_MODEL
         sync: false
+      - key: BACKBOARD_FREE_ACCESS_CONFIRMED
+        value: "false"

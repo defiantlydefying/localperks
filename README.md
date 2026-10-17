@@ -39,6 +39,8 @@ Campaign prompts for these two local features are processed on the device, not s
 
 ## Backboard integration
 
+**Budget constraint: free access only.** Backboard remains disabled even if a key is present unless `BACKBOARD_FREE_ACCESS_CONFIRMED=true`. Set that flag only after checking that the account and selected model can use an available free allowance. Do not subscribe, add payment details, purchase credits, or enable automatic top-ups. The public pricing page lists a $0 plan, but memory/RAG trial limits apply; this project does not assume an unlimited free service. If usable free access is unavailable, leave it disabled and keep the working local Gemma features. See https://backboard.io/pricing.
+
 Set these as **server environment variables**, not in browser settings:
 
 - `BACKBOARD_API_KEY`: your Backboard credential

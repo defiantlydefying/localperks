@@ -10,7 +10,7 @@ const storage=resolve(process.env.DATA_DIR||resolve(base,'.data'));mkdirSync(sto
 const memoryFile=resolve(storage,'memory.json');let memory={};try{memory=JSON.parse(readFileSync(memoryFile,'utf8'));}catch{}
 const persist=()=>{writeFileSync(memoryFile+'.tmp',JSON.stringify(memory),{mode:0o600});renameSync(memoryFile+'.tmp',memoryFile);};
 const key=process.env.BACKBOARD_API_KEY;
-const memoryReady=Boolean(key&&process.env.BACKBOARD_MODEL&&process.env.BACKBOARD_PROVIDER);
+const memoryReady=Boolean(process.env.BACKBOARD_FREE_ACCESS_CONFIRMED==='true'&&key&&process.env.BACKBOARD_MODEL&&process.env.BACKBOARD_PROVIDER);
 const sessions=new Map(Object.entries(memory._sessions||{})),limits=new Map();
 const json=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.json':'application/json'};
@@ -22,7 +22,7 @@ const server=createServer(async(req,res)=>{
  if(url.pathname==='/api/partners')return json(res,200,{backboard:memoryReady,shared:false,render:Boolean(process.env.RENDER)});
  if(url.pathname==='/api/health')return json(res,200,{ok:true});
  if(url.pathname==='/api/memory'&&req.method==='POST'){
-  if(!memoryReady)return json(res,503,{error:'Backboard is not configured. Set BACKBOARD_API_KEY, BACKBOARD_PROVIDER, and BACKBOARD_MODEL on the server.'});
+  if(!memoryReady)return json(res,503,{error:'Backboard is disabled. Confirm free account access and model availability before configuring the optional integration.'});
   const origin=req.headers.origin;
   if(!origin||new URL(origin).host!==req.headers.host)return json(res,403,{error:'Use campaign memory from this website.'});
   const sid=session(req,res),now=Date.now(),rateKey=req.socket.remoteAddress;
