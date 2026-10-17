@@ -9,7 +9,7 @@ Built from scratch during Hacktoberfest Week 2, October 2026. Working name and v
 This is an interactive **single-browser prototype**, not a shared production marketplace. Sample businesses are fictional. Role switching lets one tester walk through both sides of a collaboration. No money moves through the app.
 
 - Search and filter opportunities by city, category, and reward; save favorites.
-- Create a brief manually or draft it with on-device Gemma.
+- Create a brief manually or draft it with hosted Gemma.
 - Edit title, description, and deliverables before adding an opportunity.
 - Apply as a creator, discuss recommendations in a conversation, propose and counterpropose versioned terms, explicitly accept as both sides, submit work, request included revisions, approve completed work, and track reward delivery separately.
 - Ask Gemma for an advisory review of caption text. It cannot inspect linked media or verify performance.
@@ -28,14 +28,17 @@ npm start
 
 Open http://127.0.0.1:4173. There are no runtime package dependencies. For optional local configuration, copy `.env.example` to `.env`; the server loads it on Node 22. Keep credentials out of Git and client-side code.
 
-## Open AI
+## Hosted open-weight AI
 
-The browser loads a pinned, self-hosted copy of `@mlc-ai/web-llm@0.2.84` and runs `gemma-2-2b-it-q4f16_1-MLC` locally. Gemma prepares automatically in a background worker when the app opens. No enable switch or settings visit is required; AI actions wait for readiness and report progress. Expect roughly 1.5–2 GB of model downloads and a compatible desktop WebGPU browser. Model downloads, external fonts, and first-time engine loading require network access. Browser caching is best effort.
+AI now uses Ollama Cloud’s hosted Gemma API through a same-origin server endpoint. Visitors do not download model weights, enable an engine, or need WebGPU. The browser checks service availability and sends only the task's campaign details or caption when the visitor requests AI help. The API key remains on the server.
 
-Campaign prompts for these two local features are processed on the device, not sent to a hosted inference API. This does not make the whole website offline: fonts and the initial model assets are hosted externally. Gemma is an **open-weight** model under Google's Gemma terms; WebLLM is open-source. The editable template is explicitly labeled and never presented as AI output. Automatic preparation removes setup steps but does not eliminate the first download; hosted inference is still needed for a download-free experience.
+Set `OLLAMA_API_KEY` as a server secret, with optional `OLLAMA_MODEL` (default `gemma4:31b`). Only the supported Gemma model IDs are allowed; there is no silent fallback to a closed or paid model. Ollama account usage limits apply. Ollama Cloud has starter usage credits and paid usage options; this app never buys credits or changes the account plan. Ollama states it does not use cloud prompts or responses for model training.
 
-- [Gemma terms](https://ai.google.dev/gemma/terms)
-- [WebLLM](https://github.com/mlc-ai/web-llm)
+`lib/inference.mjs` implements task validation, server-built prompts, response validation, a 45-second provider timeout, safe error messages, and best-effort per-process demo quotas (10 requests per IP and 60 total per hour, at most 3 concurrent). These in-memory limits reset on process/isolate replacement and do not replace provider quotas or a durable rate limiter for a larger public release. Prompts and credentials are not logged.
+
+The Node server exposes `/api/ai` and `/api/ai/status`. The portfolio Worker exposes the equivalent endpoints under `/projects/localperks/api/ai`. Hosted inference requires an API credential and a live verification before it can be described as active. Earlier local WebLLM inference remains in Git history; the active hosted frontend does not import or download it.
+
+References: https://docs.ollama.com/cloud and https://ollama.com/pricing
 
 ## Backboard integration
 
@@ -63,13 +66,13 @@ Reference: https://docs.backboard.io/concepts/messages
 4. Add your Hacktoberfest-claimed .tech domain in Render, then add the DNS records Render provides.
 5. Keep the website labeled as a prototype until shared accounts and persistence are implemented.
 
-The separately hosted Sites preview is static: it includes the browser workflow and local Gemma, but does not run the Node Backboard endpoint. Render is the intended server host for that integration.
+The separately hosted Sites preview is static: it includes the browser workflow. The portfolio Worker includes hosted Gemma inference; the standalone static Sites preview must be migrated to a Worker or replaced with the Render deployment before using the new hosted frontend. Render is the intended server host for that integration.
 
 ## Hackathon evidence and category status
 
 | Category | Meaningful role | Evidence still needed |
 | --- | --- | --- |
-| Gemma | On-device brief generation and caption review | Save successful output and latency from a compatible browser |
+| Gemma | Hosted brief generation and caption review | Save successful output and latency from a compatible browser |
 | Backboard | Persistent campaign preferences and follow-up context | Live credential test, demonstrate a remembered preference |
 | Render | Host the Node application and its private API credential | Actual Render deployment URL and screenshot |
 | .tech domain | Public demo address | Confirm it was claimed through Hacktoberfest; configure domain and link it |
@@ -84,7 +87,7 @@ Authenticated business and creator accounts; shared durable campaign/application
 
 ## Checks
 
-`npm test` checks bilateral agreement acceptance, stale version rejection, counteroffer acceptance resets, revision limits, work submission and approval gates, legacy record migration, safe URLs, escaping, and structured brief validation. `npm run check` checks JavaScript syntax. Browser testing covers business recommendations → initial terms → creator counteroffer → separate acceptances → submission → revision request → revised work → final approval, along with automatically prepared Gemma inference and responsive layout. Live Backboard requires credentials.
+`npm test` checks bilateral agreement acceptance, stale version rejection, counteroffer acceptance resets, revision limits, work submission and approval gates, legacy record migration, safe URLs, escaping, and structured brief validation. `npm run check` checks JavaScript syntax. Browser testing covers business recommendations → initial terms → creator counteroffer → separate acceptances → submission → revision request → revised work → final approval, along with hosted inference connection and responsive layout. Live Backboard requires credentials.
 
 ## License
 
@@ -93,3 +96,5 @@ Application code is MIT licensed. Gemma weights, WebLLM, external fonts, and hos
 ## Agreement workflow
 
 Each collaboration has a conversation, immutable proposed agreement versions, role-specific acknowledgments, submissions tied to an accepted version, and an activity history. Proposing a change clears both current acceptances. Work cannot be submitted until both roles accept the latest version; businesses can request only the included revision rounds. Expanding scope requires a new agreement proposal. Rewards remain separate from content approval. Existing demo records are preserved with their prior status and require explicit terms rather than fabricated historical signatures. This is still a single-browser prototype, so these acknowledgments are not authenticated electronic signatures.
+
+For development, a local Ollama server can be selected with `OLLAMA_BASE_URL=http://127.0.0.1:11434` and an installed `OLLAMA_MODEL`. Public hosting requires Ollama Cloud or a secure, reachable Ollama server. A visitor’s browser never calls localhost, and this setup does not expose the owner’s computer to the internet.
