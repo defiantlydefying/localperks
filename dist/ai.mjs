@@ -1,29 +1,25 @@
 import {MODEL_ID, briefPrompt, parseBrief, reviewPrompt} from './domain.mjs';
-let engine, loading;
-export const aiState={ready:false,loading:false,message:'Local AI is off. Enable it to download Gemma to this device.',progress:0};
-export async function enableAI(onProgress=()=>{}) {
- if(engine) return engine;
- if(loading) return loading;
+let engine,loading,worker;
+const listeners=new Set();
+export const aiState={ready:false,loading:false,failed:false,message:'AI starts automatically in the background.',progress:0};
+const update=value=>{Object.assign(aiState,value);for(const listener of listeners)listener(aiState);};
+export function observeAI(listener){listeners.add(listener);listener(aiState);return()=>listeners.delete(listener);}
+export async function enableAI(onProgress){
+ if(onProgress)listeners.add(onProgress);
+ if(engine)return engine;
+ if(loading)return loading;
  loading=(async()=>{
-  if(!navigator.gpu) throw new Error('This browser does not provide WebGPU. Try a recent desktop Chrome or Edge browser. You can still write and manage briefs manually.');
-  const adapter=await navigator.gpu.requestAdapter();
-  if(!adapter) throw new Error('No compatible GPU was found. Try a desktop device with hardware acceleration enabled.');
-  aiState.loading=true;
+  update({loading:true,failed:false,message:'Preparing AI automatically. The first model download can take a few minutes.',progress:0});
+  if(!navigator.gpu)throw new Error('Local AI needs a WebGPU-capable browser. Use desktop Chrome or Edge, or continue with the editable brief template.');
+  const adapter=await navigator.gpu.requestAdapter();if(!adapter)throw new Error('This device cannot run local AI. You can still negotiate terms and manage collaborations.');
   const webllm=await import('https://esm.run/@mlc-ai/web-llm@0.2.84');
-  engine=await webllm.CreateMLCEngine(MODEL_ID,{initProgressCallback:r=>{
-   Object.assign(aiState,{message:r.text,progress:r.progress});onProgress(aiState);
-  }},{context_window_size:4096});
-  Object.assign(aiState,{ready:true,loading:false,message:'Gemma is ready. Campaign text is processed on this device.',progress:1});onProgress(aiState);return engine;
+  worker=new Worker(new URL('./ai-worker.mjs',import.meta.url),{type:'module'});
+  engine=await webllm.CreateWebWorkerMLCEngine(worker,MODEL_ID,{initProgressCallback:r=>update({message:r.text,progress:r.progress})},{context_window_size:4096});
+  update({ready:true,loading:false,failed:false,message:'AI ready · Gemma runs on this device.',progress:1});return engine;
  })();
- try{return await loading;}catch(err){Object.assign(aiState,{ready:false,loading:false,message:err.message,progress:0});onProgress(aiState);throw err;}finally{loading=null;}
+ try{return await loading;}catch(err){worker?.terminate();worker=null;engine=null;update({ready:false,loading:false,failed:true,message:err.message,progress:0});throw err;}finally{loading=null;}
 }
-export async function generateBrief(input) {
- if(!engine) throw new Error('Enable local AI first using Open AI & privacy, or use the sample template.');
- const result=await engine.chat.completions.create({messages:[{role:'user',content:briefPrompt(input)}],temperature:.35,max_tokens:650});
- return parseBrief(result.choices[0].message.content||'');
-}
-export async function reviewCaption(campaign,caption) {
- if(!engine) throw new Error('Enable local AI first using Open AI & privacy.');
- const result=await engine.chat.completions.create({messages:[{role:'user',content:reviewPrompt(campaign,caption)}],temperature:.2,max_tokens:500});
- return result.choices[0].message.content;
-}
+let generation=Promise.resolve();
+function run(prompt,max_tokens){const job=generation.catch(()=>{}).then(async()=>{const model=await enableAI();const result=await model.chat.completions.create({messages:[{role:'user',content:prompt}],temperature:.25,max_tokens});return result.choices[0].message.content||'';});generation=job;return job;}
+export async function generateBrief(input){return parseBrief(await run(briefPrompt(input),650));}
+export async function reviewCaption(campaign,caption){return run(reviewPrompt(campaign,caption),500);}

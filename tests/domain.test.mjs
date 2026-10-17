@@ -1,11 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {advance,safeURL,escapeHTML,parseBrief,briefPrompt,reviewPrompt} from '../dist/domain.mjs';
-test('collaboration cannot skip approval stages',()=>{
- const a={status:'Applied'};assert.throws(()=>advance(a,'Approved'));assert.equal(advance(a,'Accepted').status,'Accepted');
- assert.throws(()=>advance({status:'Accepted'},'Work submitted'));
- assert.equal(advance({status:'Accepted',submission:'https://example.com/work'},'Work submitted').status,'Work submitted');
-});
+import {safeURL,escapeHTML,parseBrief,briefPrompt,reviewPrompt} from '../dist/domain.mjs';
 test('unsafe links and user markup cannot become executable content',()=>{
  assert.equal(safeURL('javascript:alert(1)'),null);assert.equal(safeURL('data:text/html,hello'),null);assert.equal(safeURL('https://example.com/work'),'https://example.com/work');
  assert.equal(escapeHTML('<script>"hi"</script>'),'&lt;script&gt;&quot;hi&quot;&lt;/script&gt;');

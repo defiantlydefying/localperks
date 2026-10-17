@@ -11,7 +11,7 @@ This is an interactive **single-browser prototype**, not a shared production mar
 - Search and filter opportunities by city, category, and reward; save favorites.
 - Create a brief manually or draft it with on-device Gemma.
 - Edit title, description, and deliverables before adding an opportunity.
-- Apply as a creator, accept as a business, submit a work URL and caption, approve work, and track reward delivery separately.
+- Apply as a creator, discuss recommendations in a conversation, propose and counterpropose versioned terms, explicitly accept as both sides, submit work, request included revisions, approve completed work, and track reward delivery separately.
 - Ask Gemma for an advisory review of caption text. It cannot inspect linked media or verify performance.
 - Save demo records in browser storage and export a JSON snapshot.
 - Optionally use Backboard for persistent campaign conversations through the Node server. Campaign memory is isolated by browser session and campaign. It does not synchronize browser-local listings.
@@ -30,9 +30,9 @@ Open http://127.0.0.1:4173. There are no runtime package dependencies. For optio
 
 ## Open AI
 
-The browser lazily loads `@mlc-ai/web-llm@0.2.84` and runs `gemma-2-2b-it-q4f16_1-MLC` locally. Choose **Open AI & privacy → Download & enable Gemma**. Expect roughly 1.5–2 GB of model downloads and a compatible desktop WebGPU browser. Model downloads, external fonts, and first-time engine loading require network access. Browser caching is best effort.
+The browser lazily loads `@mlc-ai/web-llm@0.2.84` and runs `gemma-2-2b-it-q4f16_1-MLC` locally. Gemma prepares automatically in a background worker when the app opens. No enable switch or settings visit is required; AI actions wait for readiness and report progress. Expect roughly 1.5–2 GB of model downloads and a compatible desktop WebGPU browser. Model downloads, external fonts, and first-time engine loading require network access. Browser caching is best effort.
 
-Campaign prompts for these two local features are processed on the device, not sent to a hosted inference API. This does not make the whole website offline: fonts and the initial model assets are hosted externally. Gemma is an **open-weight** model under Google's Gemma terms; WebLLM is open-source. The manual template is explicitly labeled and never presented as AI output.
+Campaign prompts for these two local features are processed on the device, not sent to a hosted inference API. This does not make the whole website offline: fonts and the initial model assets are hosted externally. Gemma is an **open-weight** model under Google's Gemma terms; WebLLM is open-source. The editable template is explicitly labeled and never presented as AI output. Automatic preparation removes setup steps but does not eliminate the first download; hosted inference is still needed for a download-free experience.
 
 - [Gemma terms](https://ai.google.dev/gemma/terms)
 - [WebLLM](https://github.com/mlc-ai/web-llm)
@@ -80,12 +80,16 @@ For the strongest submission, recruit one real business or creator, ask them to 
 
 ## Remaining work before a public marketplace
 
-Authenticated business and creator accounts; shared durable campaign/application records; creator profiles; notifications; agreed content-usage terms; revisions; reward disputes; moderation. Payment processing and social analytics are outside this prototype. This project is not yet submission-ready: live AI/partner evidence, a public source repository, real-user testing, and the DEV write-up are still needed.
+Authenticated business and creator accounts; shared durable campaign/application/message records; creator profiles; notifications; reward disputes; moderation. Explicit content-usage terms, counteroffers, bilateral acknowledgments, and revision workflows are implemented in the browser prototype. Payment processing and social analytics are outside this prototype. This project is not yet submission-ready: live AI/partner evidence, a public source repository, real-user testing, and the DEV write-up are still needed.
 
 ## Checks
 
-`npm test` checks collaboration stage ordering, safe submitted URLs, escaping, structured brief validation, and the boundaries expressed in AI prompts. `npm run check` checks JavaScript syntax. Browser testing covers the complete application → acceptance → work submission → approval flow, plus brief creation and responsive layout. Live Backboard requires credentials.
+`npm test` checks bilateral agreement acceptance, stale version rejection, counteroffer acceptance resets, revision limits, work submission and approval gates, legacy record migration, safe URLs, escaping, and structured brief validation. `npm run check` checks JavaScript syntax. Browser testing covers business recommendations → initial terms → creator counteroffer → separate acceptances → submission → revision request → revised work → final approval, along with automatically prepared Gemma inference and responsive layout. Live Backboard requires credentials.
 
 ## License
 
 Application code is MIT licensed. Gemma weights, WebLLM, external fonts, and hosted services retain their own terms. See LICENSE.
+
+## Agreement workflow
+
+Each collaboration has a conversation, immutable proposed agreement versions, role-specific acknowledgments, submissions tied to an accepted version, and an activity history. Proposing a change clears both current acceptances. Work cannot be submitted until both roles accept the latest version; businesses can request only the included revision rounds. Expanding scope requires a new agreement proposal. Rewards remain separate from content approval. Existing demo records are preserved with their prior status and require explicit terms rather than fabricated historical signatures. This is still a single-browser prototype, so these acknowledgments are not authenticated electronic signatures.

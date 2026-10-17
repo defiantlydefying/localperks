@@ -1,1 +1,15 @@
-{"name":"localperks","version":"0.1.0","private":true,"type":"module","description":"Local creator collaboration workspace with on-device Gemma and Backboard campaign memory.","scripts":{"start":"node server.mjs","test":"node --test tests/*.test.mjs","check":"node --check dist/app.js && node --check dist/ai.mjs && node --check server.mjs"},"engines":{"node":">=22.18.0"}}
+{
+  "name": "localperks",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Local creator collaboration workspace with on-device Gemma and Backboard campaign memory.",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check dist/app.js && node --check dist/ai.mjs && node --check server.mjs"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}
