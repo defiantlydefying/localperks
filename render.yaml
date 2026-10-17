@@ -27,3 +27,7 @@ services:
         sync: false
       - key: BACKBOARD_FREE_ACCESS_CONFIRMED
         value: "false"
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: OLLAMA_MODEL
+        value: gemma4:31b

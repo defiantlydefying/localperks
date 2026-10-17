@@ -1,4 +1,6 @@
 import {createServer} from 'node:http';
+import {createInferenceHandler} from './lib/inference.mjs';
+const inference=createInferenceHandler();
 import {readFileSync,existsSync,mkdirSync,writeFileSync,renameSync} from 'node:fs';
 import {resolve,extname,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -19,6 +21,9 @@ function session(req,res){const cookies=Object.fromEntries((req.headers.cookie||
 const server=createServer(async(req,res)=>{
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');res.setHeader('X-Frame-Options','DENY');
  const url=new URL(req.url,'http://localhost');
+ if(['/api/ai','/api/ai/status','/projects/localperks/api/ai','/projects/localperks/api/ai/status'].includes(url.pathname)){
+  try{const headers=new Headers();for(const [name,value]of Object.entries(req.headers))if(value)headers.set(name,Array.isArray(value)?value.join(','):value);const options={method:req.method,headers};if(req.method==='POST'){options.body=req;options.duplex='half';}const webRequest=new Request(`http://${req.headers.host}${req.url}`,options);const result=await inference(webRequest,process.env,req.socket.remoteAddress);res.writeHead(result.status,Object.fromEntries(result.headers));res.end(await result.text());}catch{json(res,400,{error:'The AI request could not be read.'});}return;
+ }
  if(url.pathname==='/api/partners')return json(res,200,{backboard:memoryReady,shared:false,render:Boolean(process.env.RENDER)});
  if(url.pathname==='/api/health')return json(res,200,{ok:true});
  if(url.pathname==='/api/memory'&&req.method==='POST'){
