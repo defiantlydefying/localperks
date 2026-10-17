@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: localperks
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --ignore-scripts
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: localperks-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.3
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATA_DIR
+        value: /var/data
+      - key: BACKBOARD_API_KEY
+        sync: false
+      - key: BACKBOARD_PROVIDER
+        sync: false
+      - key: BACKBOARD_MODEL
+        sync: false
