@@ -1,3 +1,6 @@
+import { dashboardHTML, studioHTML } from './workspace-pages.mjs';
+import { createScopeGate } from './scope-state.mjs';
+import { demoTerms, demoRequests, scopeDemoHTML } from './scope-demo.mjs';
 import { questionFields, collectAnswers, briefDetailsHTML } from './brief-details.mjs';
 import { seeds, escapeHTML as e, safeURL } from './domain.mjs';
 import {
@@ -9,10 +12,21 @@ import {
   submitWork as recordSubmission,
   requestChanges,
   approveWork,
+  recordRewardDelivery,
 } from './collaboration.mjs';
 import { workspaceHTML, roomHTML, termsForm, scopeHTML } from './room.mjs';
 import { storefront } from './art.mjs';
-import { aiState, enableAI, generateBrief, reviewCaption, checkScope, observeAI } from './ai.mjs';
+import {
+  aiState,
+  enableAI,
+  generateBrief,
+  reviewCaption,
+  checkScope,
+  rewriteScope,
+  observeAI,
+} from './ai.mjs';
+const scopeGate = createScopeGate();
+let scopeUndo = null;
 const key = 'localperks-v1';
 let state = { campaigns: structuredClone(seeds), applications: [], saved: [] };
 try {
@@ -64,6 +78,10 @@ function toast(message) {
   toastTimer = setTimeout(() => t.classList.remove('visible'), 4200);
 }
 function openModal(title, content) {
+  scopeGate.invalidate();
+  scopeCheck = null;
+  scopeUndo = null;
+  document.querySelector('#scope-fix-summary')?.remove();
   document.body.classList.remove('sidebar-open');
   syncSidebar();
   $('#modal-content').innerHTML =
@@ -91,7 +109,7 @@ function renderCards() {
   const list = filtered();
   $('#cards').innerHTML = list.length
     ? list.map(card).join('')
-    : `<div class="empty"><h3>No opportunities here yet.</h3><p>Try a different city or category, or create your first opportunity.</p><button class="button" data-action="new">Create an opportunity ${icon}</button></div>`;
+    : `<div class="empty"><h3>${view === 'saved' ? 'No saved opportunities yet.' : view === 'campaigns' ? 'No campaigns yet.' : 'No matching opportunities.'}</h3><p>${view === 'saved' ? 'Use the heart on an opportunity to keep it here.' : view === 'campaigns' ? 'Create a brief to start your first campaign.' : 'Try a different city, category, or search.'}</p><button class="button" data-view="${view === 'campaigns' ? 'brief-tool' : 'explore'}">${view === 'campaigns' ? 'Draft a brief' : 'Explore opportunities'} ↗</button></div>`;
   $('#result-count').textContent =
     `${list.length} ${list.length === 1 ? 'opportunity' : 'opportunities'}${view === 'saved' ? ' saved' : ''}`;
 }
@@ -101,8 +119,32 @@ function roleSwitch() {
 function render() {
   renderShell();
   updateCount();
-  if (view === 'dashboard' || view === 'gemma') {
-    renderDashboard();
+  if (view === 'dashboard') {
+    main.innerHTML = dashboardHTML(state, role);
+    return;
+  }
+  if (view === 'gemma') {
+    main.innerHTML = studioHTML(role);
+    return;
+  }
+  if (view === 'brief-tool') {
+    newBrief('', true);
+    return;
+  }
+  if (view === 'caption-tool') {
+    captionCheck('', true);
+    return;
+  }
+  if (view === 'scope-tool') {
+    presentTool('Scope sandbox', scopeDemoHTML(), true);
+    return;
+  }
+  if (view === 'settings') {
+    settings(true);
+    return;
+  }
+  if (view === 'about') {
+    about(true);
     return;
   }
   if (view === 'workspace') {
@@ -113,7 +155,7 @@ function render() {
     renderRoom();
     return;
   }
-  main.innerHTML = `<section id="opportunities"><div class="section-title"><div><h2>${view === 'campaigns' ? 'Your campaigns.' : view === 'saved' ? 'Saved for later.' : 'Your neighborhood, your next opportunity.'}</h2><p>${view === 'campaigns' ? 'Manage the opportunities you’ve created in this workspace.' : view === 'saved' ? 'Pick up where inspiration found you.' : 'Discover small businesses looking for someone just like you.'}</p></div><button class="button ${role === 'business' ? 'primary' : 'secondary'}" data-action="new">Create an opportunity <span>+</span></button></div><div class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Search opportunities" placeholder="Search businesses, neighborhoods, or ideas…" value="${e(search)}"></div><select class="filter" id="city" aria-label="Filter by city">${['All cities', ...new Set(state.campaigns.map(c => c.city))].map(x => `<option ${city === x ? 'selected' : ''}>${e(x)}</option>`).join('')}</select><select class="filter" id="reward" aria-label="Filter by reward">${['All rewards', 'Cash + perks', 'Cash', 'Perks'].map(x => `<option ${reward === x ? 'selected' : ''}>${e(x)}</option>`).join('')}</select><div class="filter-wrap">${['All', 'Food & drink', 'Shops & makers', 'Wellness'].map(x => `<button class="chip ${category === x ? 'active' : ''}" data-category="${e(x)}">${e(x)}</button>`).join('')}</div></div><div class="results-line"><span id="result-count"></span>${role === 'creator' ? `<button class="text-button" data-action="saved">${savedOnly ? 'Show all opportunities' : '♡ Saved opportunities'}</button>` : ''}</div><div class="grid" id="cards"></div></section><section class="local-strip"><div><h3>Your business. Their creativity. A good match.</h3><p>Tell us what you’re planning. Turn it into a brief creators can act on.</p></div><button class="button" data-action="new">Create your first opportunity ${icon}</button></section>`;
+  main.innerHTML = `<section id="opportunities"><div class="section-title"><div><h2>${view === 'campaigns' ? 'Your campaigns.' : view === 'saved' ? 'Saved for later.' : 'Your neighborhood, your next opportunity.'}</h2><p>${view === 'campaigns' ? 'Manage the opportunities you’ve created in this workspace.' : view === 'saved' ? 'Pick up where inspiration found you.' : 'Discover small businesses looking for someone just like you.'}</p></div><button class="button ${role === 'business' ? 'primary' : 'secondary'}" data-action="new">Create an opportunity <span>+</span></button></div><div class="filters"><div class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Search opportunities" placeholder="Search businesses, neighborhoods, or ideas…" value="${e(search)}"></div><select class="filter" id="city" aria-label="Filter by city">${['All cities', ...new Set(state.campaigns.map(c => c.city))].map(x => `<option ${city === x ? 'selected' : ''}>${e(x)}</option>`).join('')}</select><select class="filter" id="reward" aria-label="Filter by reward">${['All rewards', 'Cash + perks', 'Cash', 'Perks'].map(x => `<option ${reward === x ? 'selected' : ''}>${e(x)}</option>`).join('')}</select><div class="filter-wrap">${['All', 'Food & drink', 'Shops & makers', 'Wellness'].map(x => `<button class="chip ${category === x ? 'active' : ''}" data-category="${e(x)}">${e(x)}</button>`).join('')}</div></div><div class="results-line"><span id="result-count"></span>${role === 'creator' ? `<button class="text-button" data-action="saved">${savedOnly ? 'Show all opportunities' : '♡ Saved opportunities'}</button>` : ''}</div><div class="grid" id="cards"></div></section>`;
   renderCards();
 }
 function renderShell() {
@@ -137,6 +179,12 @@ function navigate(next) {
   modal.close();
   view = next;
   savedOnly = next === 'saved';
+  if (['explore', 'campaigns', 'saved'].includes(next)) {
+    category = 'All';
+    reward = 'All rewards';
+    city = 'All cities';
+    search = '';
+  }
   document.body.classList.remove('sidebar-open');
   syncSidebar();
   render();
@@ -154,25 +202,27 @@ function syncSidebar() {
   });
   $('#collapse-icon').textContent = expanded ? '⇤' : '⇥';
 }
-function renderDashboard() {
-  const apps = ownApplications(),
-    campaigns = state.campaigns.filter(c => !c.sample),
-    pending = apps.filter(a => a.status === 'Applied'),
-    reviewing = apps.filter(a => a.status === 'Work submitted'),
-    active = apps.filter(a => ['In progress', 'Changes requested'].includes(a.status));
-  const metrics =
-    role === 'business'
-      ? [
-          [campaigns.length, 'Your campaigns'],
-          [pending.length, 'Proposals to review'],
-          [reviewing.length, 'Work to review'],
-        ]
-      : [
-          [apps.length, 'Your applications'],
-          [active.length, 'In progress'],
-          [state.saved.length, 'Saved opportunities'],
-        ];
-  main.innerHTML = `<div class="dashboard-heading"><div><div class="eyebrow"><span></span>${role === 'business' ? 'BUSINESS DASHBOARD' : 'CREATOR DASHBOARD'}</div><h2>${view === 'gemma' ? 'Your Gemma studio.' : role === 'business' ? 'Bring your next campaign to life.' : 'Good work, around the corner.'}</h2><p>${role === 'business' ? 'Create a brief, review creator proposals, and keep collaborations moving.' : 'Find opportunities, track your applications, and get your content ready.'}</p></div><button class="button secondary" data-view="${role === 'business' ? 'campaigns' : 'explore'}">${role === 'business' ? 'View my campaigns' : 'Find opportunities'} ↗</button></div><section class="gemma-home" aria-labelledby="gemma-heading"><div class="eyebrow"><span></span>Your local collaboration, powered by Gemma</div><h1 id="gemma-heading">${role === 'business' ? 'A neighborhood idea.<br><em>A collaboration in the making.</em>' : 'Your next local collab.<br><em>Make it your own.</em>'}</h1><p>${role === 'business' ? 'Turn your next promotion into a brief local creators can act on.' : 'Check your caption against the brief before sending it to the business.'}</p><div class="gemma-composer"><div class="gemma-tools">${role === 'business' ? '<span class="tool-selected">✧ Write a brief</span><button type="button" data-action="caption-check">Review a caption ↗</button>' : '<span class="tool-selected">✧ Review a caption</span><button type="button" data-action="new">Write a brief ↗</button>'}</div><form id="${role === 'business' ? 'idea-start-form' : 'caption-start-form'}"><label for="starter-idea">${role === 'business' ? 'What would you like a local creator to promote?' : 'What caption are you working on?'}</label><textarea id="starter-idea" name="idea" maxlength="${role === 'business' ? 1500 : 4000}" required placeholder="${role === 'business' ? 'Our café is launching a fall menu. We’d love a local creator to film a cozy morning visit…' : 'Paid partnership with Sunday Coffee. A slow morning, a maple latte, and a new favorite neighborhood spot…'}"></textarea><div class="gemma-composer-bottom"><span>${role === 'business' ? 'Gemma drafts. You edit and approve.' : 'Gemma suggests. Your voice stays yours.'}</span><button class="button primary" type="submit">${role === 'business' ? 'Build my brief with Gemma ↗' : 'Check my caption with Gemma ↗'}</button></div></form></div><div class="gemma-home-foot"><span>Hosted AI · no model download</span><button class="text-button" data-action="browse">Or explore local opportunities ↓</button></div></section>${view === 'dashboard' ? `<div class="dashboard-metrics">${metrics.map(([value, label]) => `<div><strong>${value}</strong><span>${label}</span></div>`).join('')}</div>` : ''}<div class="dashboard-next"><div><h3>${role === 'business' ? 'Keep your collaborations moving.' : 'From a first hello to a finished post.'}</h3><p>${role === 'business' ? 'Review proposals, negotiate terms, and approve completed work.' : 'Check messages, agree on terms, and submit your work.'}</p></div><button class="button secondary" data-view="workspace">Open collaborations ↗</button></div>`;
+async function scopeEvidence() {
+  openModal(
+    'How we tested Gemma.',
+    `<p class="modal-intro" id="evidence-loading">Loading the recorded evaluation…</p>`,
+  );
+  const active = $('#evidence-loading');
+  try {
+    const response = await fetch(new URL('./scope-evaluation.json', import.meta.url));
+    if (!response.ok) throw Error();
+    const report = await response.json();
+    if (!active.isConnected) return;
+    const mismatches = report.results.filter(r => r.actual && !r.correct);
+    openModal(
+      'How we tested Gemma.',
+      `<p class="modal-intro">One real run on ${report.totalCases} hand-labeled synthetic scope-change scenarios. These are examples written for this test, not customer data or an independent benchmark.</p><div class="details-grid"><div><small>LABEL MATCHES</small>${report.correct}/${report.totalCases}</div><div><small>MEDIAN LATENCY</small>${(report.medianLatencyMs / 1000).toFixed(2)} seconds</div><div><small>REQUEST FAILURES</small>${report.errors}</div></div><p class="form-hint">Model: ${e(report.model)} via ${e(report.provider)}. Successful responses: ${report.successful}. Provider cost was not measured. No claim of superiority over other models.</p><h3>Where the model disagreed</h3>${mismatches.map(r => `<div class="callout"><strong>${e(r.note)}</strong><p>Our label: ${e(r.expected)}. Gemma: ${e(r.actual)}.</p><p>${e(r.scope.explanation)}</p></div>`).join('')}<p class="form-hint">Ambiguous cases have subjective labels. That disagreement is why the product shows the agreement and keeps people in control. A scope check does not decide rights or approve payments.</p><div class="actions"><button class="button primary" data-action="scope-demo">Try it yourself ↗</button><a class="button secondary" href="scope-evaluation.json" download="localperks-scope-evaluation.json">Download full results ↓</a></div>`,
+    );
+  } catch {
+    if (active.isConnected)
+      active.textContent =
+        'The test report could not load. You can find the full report in the project repository.';
+  }
 }
 function details(id) {
   const c = state.campaigns.find(x => x.id === id);
@@ -209,11 +259,18 @@ function replaceApplication(id, next) {
   state.applications[index] = next;
   persist();
 }
-function newBrief(idea = '') {
+function presentTool(title, content, inline) {
+  if (!inline) return openModal(title, content);
+  modal.close();
+  $('#modal-content').innerHTML = '';
+  main.innerHTML = `<div class="tool-page-heading">${['settings', 'about'].includes(view) ? '' : '<button class="text-button" data-view="gemma">← Gemma Studio</button>'}<h1>${e(title)}</h1></div><section class="tool-page-body">${content}</section>`;
+}
+function newBrief(idea = '', inline = false) {
   draft = null;
-  openModal(
+  presentTool(
     'Draft your brief with Gemma.',
     `<p class="modal-intro">Fill in your promotion, reward, and deadline, then choose Draft with Gemma below. Gemma writes a title, description, and deliverables for you to review. No download or setup needed.</p><form id="brief-form"><div class="form-grid"><div><label for="business">Business name</label><input id="business" name="business" required maxlength="80" placeholder="Your neighborhood business"></div><div><label for="location">City & state</label><input id="location" name="city" required maxlength="80" value="Chicago, IL"></div></div><label for="idea">What would you like to promote?</label><textarea id="idea" name="idea" required maxlength="1500" placeholder="We’re a small café launching a new fall menu. We’d love a local creator to visit, try a drink, and share their honest experience…">${e(idea)}</textarea><div class="form-grid"><div><label for="compensation">Exact reward</label><input id="compensation" name="reward" required maxlength="100" placeholder="$75 + two drinks"></div><div><label for="deadline">Work due</label><input id="deadline" name="deadline" type="date" min="${new Date().toLocaleDateString('en-CA')}" required></div><div><label for="platform">Platform</label><select id="platform" name="platform"><option>Instagram</option><option>TikTok</option><option>YouTube</option></select></div><div><label for="category">Category</label><select id="category" name="category"><option>Food & drink</option><option>Shops & makers</option><option>Wellness</option></select></div><div><label for="reward-type">Reward type</label><select id="reward-type" name="rewardType"><option>Cash + perks</option><option>Cash</option><option>Perks</option></select></div></div><div id="brief-ai" class="callout lavender">✧ Gemma: ${aiState.ready ? 'Connected and ready to draft.' : aiState.failed ? 'Connection unavailable. Retry from Settings or use the manual template.' : 'Connecting automatically. No model download is needed.'}</div><div id="brief-status" class="ai-status" role="status"></div><div class="actions"><button class="button secondary" type="submit" name="mode" value="manual">Use manual template</button><button class="button primary" type="submit" name="mode" value="ai">✧ Draft with Gemma</button></div></form>`,
+    inline,
   );
 }
 function editDraft() {
@@ -222,37 +279,48 @@ function editDraft() {
     `<p class="modal-intro">${draft.ai ? 'Drafted by hosted Gemma.' : 'Manual template — no AI was used.'} Review every detail before adding this opportunity.</p><form id="publish-form"><label for="title">Opportunity title</label><input id="title" name="title" required maxlength="120" value="${e(draft.title)}"><label for="description">Description</label><textarea id="description" name="description" required maxlength="2000">${e(draft.description)}</textarea><label for="deliverables">Deliverables — one per line</label><textarea id="deliverables" name="deliverables" required maxlength="2400">${e(draft.deliverables.join('\n'))}</textarea>${questionFields(draft.questions)}<div class="mini-panel">${e(draft.business)} · ${e(draft.city)}\nReward: ${e(draft.reward)}\nDue: ${e(draft.deadline)} · ${e(draft.platform)}</div><label class="check-row"><input type="checkbox" required>I’ve checked the reward, deliverables, and deadline. This adds an opportunity to this browser’s demo workspace.</label><div class="actions"><button class="button primary" type="submit">Add opportunity ${icon}</button></div></form>`,
   );
 }
-function captionCheck(caption = '') {
-  openModal(
+function captionCheck(caption = '', inline = false) {
+  presentTool(
     'Review a caption with Gemma.',
     `<p class="modal-intro">Check written content against your campaign requirements. Gemma suggests improvements; you make the final call.</p><form id="caption-check-form"><label for="check-deliverables">Campaign requirements — one per line</label><textarea id="check-deliverables" name="deliverables" required maxlength="2400" placeholder="Mention the fall menu and café location.&#10;Clearly disclose the paid collaboration."></textarea><label for="check-caption">Caption to review</label><textarea id="check-caption" name="caption" required maxlength="4000" placeholder="Paste your draft caption here…">${e(caption)}</textarea><p class="form-hint">Only these requirements and your caption are sent to hosted Gemma. Linked images and videos are not inspected.</p><div id="caption-status" class="ai-status" role="status"></div><div id="caption-result" class="review-text" aria-live="polite"></div><div class="actions"><button class="button primary" type="submit">✧ Review caption with Gemma</button></div></form>`,
+    inline,
   );
 }
-function settings() {
-  openModal(
+function settings(inline = false) {
+  presentTool(
     'Settings',
     `<p class="modal-intro">Gemma runs through your hosted Ollama connection. Draft campaign briefs and review caption text without downloading a model or needing a special browser.</p><p class="ai-status" id="ai-status" role="status">${e(aiState.message)}</p>${aiState.failed ? '<div class="actions"><button class="button secondary" data-action="enable-ai">Check AI connection</button></div>' : ''}<hr class="divider"><h3>What gets sent?</h3><p class="form-hint">When you choose Draft with Gemma, the entered campaign details go to the configured Ollama provider. When you choose Review caption with Gemma, the agreed deliverables and caption go to the configured Ollama provider. Browsing and negotiating do not send your conversation to the model. Ollama Cloud says it does not use cloud prompts or responses to train models. <a href="https://ollama.com/privacy" target="_blank" rel="noopener">Provider data terms</a>.</p><hr class="divider"><h3>Campaign memory</h3><p class="form-hint">Backboard is optional and ${partners.backboard ? 'connected' : 'disabled'}. Conversation and agreement history already work without it.</p>${partners.backboard ? '<button class="button secondary" data-action="memory">Open campaign memory</button>' : ''}<hr class="divider"><h3>Your demo workspace</h3><p class="form-hint">Sample listings are fictional. Messages, terms, acknowledgments, submitted work, and statuses stay in this browser. Role switching lets you try both sides; shared authenticated accounts are not connected yet. Rewards are delivered outside LocalPerks.</p><p class="form-hint">Download a JSON copy of your opportunities and collaborations for your records. This is optional; your work saves automatically in this browser.</p><div class="actions"><button class="button secondary" data-action="export">Download your data ↓</button><button class="text-button" data-action="reset">Reset sample workspace</button></div><p class="form-hint"><a href="https://docs.ollama.com/cloud" target="_blank" rel="noopener">About hosted Gemma</a></p>`,
+    inline,
   );
 }
-function about() {
-  openModal(
+function about(inline = false) {
+  presentTool(
     'Every good collaboration is a conversation.',
-    `<ol class="detail-list"><li><strong>Introduce:</strong> a creator sends a proposal with their idea.</li><li><strong>Discuss:</strong> both sides ask questions, share recommendations, and refine the approach.</li><li><strong>Agree:</strong> propose deliverables, reward, deadline, content usage, and revision rounds. Both sides accept the same version.</li><li><strong>Create:</strong> the creator submits work against the accepted agreement.</li><li><strong>Review:</strong> the business requests changes within the agreed rounds or approves the work.</li><li><strong>Reward:</strong> the business delivers the reward following the agreed timing.</li></ol><div class="callout lavender">Try both sides: send an application, open the collaboration, and switch roles to negotiate and accept terms. A revised agreement always needs fresh acceptance from both sides.</div><p class="form-hint">Hosted AI is built in. It can draft briefs and review submitted caption text, but it cannot inspect linked media, verify performance, or approve payments.</p><div class="actions"><button class="button primary" data-action="close">Explore opportunities ↗</button></div>`,
+    `<ol class="detail-list"><li><strong>Introduce:</strong> a creator sends a proposal with their idea.</li><li><strong>Discuss:</strong> both sides ask questions, share recommendations, and refine the approach.</li><li><strong>Agree:</strong> propose deliverables, reward, deadline, content usage, and revision rounds. Both sides accept the same version.</li><li><strong>Create:</strong> the creator submits work against the accepted agreement.</li><li><strong>Review:</strong> the business requests changes within the agreed rounds or approves the work.</li><li><strong>Reward:</strong> the business delivers the reward following the agreed timing.</li></ol><div class="callout lavender">Try both sides: send an application, open the collaboration, and switch roles to negotiate and accept terms. A revised agreement always needs fresh acceptance from both sides.</div><p class="form-hint">Hosted AI is built in. It can draft briefs and review submitted caption text, but it cannot inspect linked media, verify performance, or approve payments.</p><div class="actions"><button class="button primary" data-action="explore">Explore opportunities ↗</button></div>`,
+    inline,
   );
 }
 function submitWork(id) {
+  const a = state.applications.find(x => x.id === id),
+    latest = a?.submissions.filter(x => !x.legacy).at(-1),
+    revising = a?.status === 'Changes requested';
   openModal(
     'Send your work for review.',
-    `<p class="modal-intro">This submission is linked to the latest agreement accepted by both sides. Include a viewable link and the exact caption.</p><form id="work-form" data-id="${e(id)}"><label for="work-url">Work or draft link</label><input id="work-url" type="url" name="submission" required placeholder="https://…"><label for="caption">Caption or written content</label><textarea id="caption" name="caption" maxlength="4000" required placeholder="Paste the caption for the business to review."></textarea><p class="form-hint">The business reviews the linked work. AI can only review the text entered here.</p><div class="actions"><button class="button primary">Submit work ↗</button></div></form>`,
+    `<p class="modal-intro">This submission is linked to the latest agreement accepted by both sides. Include a viewable link and the exact caption.</p>${revising ? `<div class="callout"><strong>Requested changes</strong><p>${e(a.revisionRequests.at(-1)?.note || 'Review the latest feedback.')}</p></div>` : ''}<form id="work-form" data-id="${e(id)}"><label for="work-url">Work or draft link</label><input id="work-url" type="url" name="submission" required value="${e(revising ? latest?.url || '' : '')}" placeholder="https://…"><label for="caption">Caption or written content</label><textarea id="caption" name="caption" maxlength="4000" required placeholder="Paste the caption for the business to review.">${e(revising ? latest?.caption || '' : '')}</textarea><p class="form-hint">The business reviews the linked work. AI can only review the text entered here.</p><div class="actions"><button class="button primary">Submit work ↗</button></div></form>`,
   );
 }
 async function memory() {
   openModal(
     'A memory for your campaign.',
-    `<p class="modal-intro">Save campaign context and keep a conversation with Backboard. Use business-approved details; text entered here is sent to Backboard when you submit.</p><form id="memory-form"><label for="memory-campaign">Campaign</label><select id="memory-campaign" name="campaignId">${state.campaigns.map(c => `<option value="${e(c.id)}">${e(c.business)} — ${e(c.title)}</option>`).join('')}</select><label for="memory-question">What would you like to remember or ask?</label><textarea id="memory-question" name="question" required maxlength="2000" placeholder="Remember that we prefer a relaxed tone. What should we clarify before accepting a creator?"></textarea><div id="memory-status" class="ai-status" role="status"></div><div id="memory-result" class="review-text"></div><div class="actions"><button class="button primary" ${!partners.backboard ? 'disabled' : ''}>Ask campaign memory ${icon}</button></div></form>${!partners.backboard ? '<p class="form-hint">Connect Backboard on the Render server to enable this feature. No simulated answers are displayed.</p>' : ''}`,
+    `<p class="modal-intro">Save campaign context and keep a conversation with Backboard. Use business-approved details; text entered here is sent to Backboard when you submit.</p><form id="memory-form"><label for="memory-campaign">Campaign</label><select id="memory-campaign" name="campaignId">${state.campaigns.map(c => `<option value="${e(c.id)}">${e(c.business)} — ${e(c.title)}</option>`).join('')}</select><label for="memory-question">What would you like to remember or ask?</label><textarea id="memory-question" name="question" required maxlength="2000" placeholder="Remember that we prefer a relaxed tone. What should we clarify before accepting a creator?"></textarea><div id="memory-status" class="ai-status" role="status"></div><div id="memory-result" class="review-text"></div><div class="actions"><button class="button primary" ${!partners.backboard ? 'disabled' : ''}>Ask campaign memory ${icon}</button></div></form>${!partners.backboard ? '<p class="form-hint">Configure the optional Backboard server integration to enable this feature. No simulated answers are displayed.</p>' : ''}`,
   );
 }
 document.addEventListener('click', async event => {
+  if (event.target.closest('[data-home]')) {
+    event.preventDefault();
+    navigate('dashboard');
+    return;
+  }
   const b = event.target.closest('button');
   if (!b) return;
   if (b.dataset.role) {
@@ -291,9 +359,20 @@ document.addEventListener('click', async event => {
     modal.close();
     return;
   }
+  if (action === 'scope-evidence') return scopeEvidence();
+  if (action === 'scope-demo')
+    return openModal('Keep a $75 deal from becoming unlimited work.', scopeDemoHTML());
+  if (action === 'scope-preset') {
+    const choice = demoRequests[Number(b.dataset.preset)];
+    if (choice) {
+      $('#revision-note').value = choice.note;
+      invalidateScope();
+    }
+    return;
+  }
   if (action === 'caption-check') return captionCheck();
-  if (action === 'about') return about();
-  if (action === 'settings') return settings();
+  if (action === 'about') return about(view === 'about');
+  if (action === 'settings') return settings(view === 'settings');
   if (action === 'memory') return memory();
   if (action === 'sample-room') {
     let sample = state.applications.find(x => x.id === 'sample-negotiation');
@@ -404,40 +483,115 @@ document.addEventListener('click', async event => {
     return;
   }
 
+  if (action === 'focus-work') {
+    const work = $('#collaboration-work');
+    work?.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
+    work?.focus({ preventScroll: true });
+    return;
+  }
   if (action === 'reward-delivered') {
     const a = state.applications.find(x => x.id === id);
-    if (role !== 'business' || a.status !== 'Approved') return;
-    a.rewardDelivered = true;
-    persist();
-    render();
-    toast('Reward marked as delivered. No payment was sent by LocalPerks.');
+    try {
+      replaceApplication(id, recordRewardDelivery(a, role));
+      render();
+      toast('Reward delivery recorded. This did not send a payment.');
+    } catch (err) {
+      toast(err.message);
+    }
+    return;
+  }
+  if (action === 'scope-undo') {
+    const undo = scopeUndo,
+      field = $('#revision-note');
+    if (undo && field?.value.trim() === undo.rewritten) {
+      field.value = undo.original;
+      invalidateScope();
+    }
+    return;
+  }
+  if (action === 'scope-fix') {
+    const form = b.closest('form'),
+      demo = form.id === 'scope-demo-form',
+      room = form.dataset.id;
+    const terms = demo ? demoTerms : state.applications.find(x => x.id === room)?.terms;
+    const note = $('#revision-note').value.trim();
+    if (!terms || !note) return;
+    const snapshot = { id: demo ? 'scope-demo' : room, version: terms.version, note },
+      ticket = scopeGate.start(snapshot);
+    const current = () => ({
+      id: snapshot.id,
+      version: demo
+        ? demoTerms.version
+        : state.applications.find(x => x.id === room)?.terms?.version,
+      note: $('#revision-note')?.value.trim(),
+    });
+    b.disabled = true;
+    b.textContent = 'Removing extra asks…';
+    try {
+      const rewrite = await rewriteScope(terms, note);
+      if (!b.isConnected || !scopeGate.current(ticket, current())) return;
+      $('#revision-note').value = rewrite.note;
+      invalidateScope();
+      scopeUndo = { original: note, rewritten: rewrite.note };
+      $('#scope-result').insertAdjacentHTML(
+        'beforebegin',
+        `<div id="scope-fix-summary" class="callout"><strong>Request rewritten. Review the wording above.</strong><p>Removed:</p><ul>${rewrite.removed.map(x => `<li>${e(x)}</li>`).join('')}</ul><p class="form-hint">Gemma is rechecking the suggestion. The agreement has not changed and nothing has been sent.</p><button type="button" class="text-button" data-action="scope-undo">Undo rewrite</button></div>`,
+      );
+      form.querySelector('[data-action="scope-check"]').click();
+    } catch (err) {
+      if (b.isConnected && scopeGate.current(ticket, current())) {
+        toast(err.message);
+        b.disabled = false;
+        b.textContent = '✧ Try fixing again';
+      }
+    }
     return;
   }
   if (action === 'scope-check') {
-    const a = state.applications.find(x => x.id === id),
-      note = $('#revision-note').value.trim(),
-      version = a.terms.version;
-    if (!note) {
+    const demo = Boolean(b.closest('#scope-demo-form'));
+    const a = demo ? null : state.applications.find(x => x.id === id);
+    const terms = demo ? demoTerms : a?.terms;
+    const note = $('#revision-note').value.trim(),
+      version = terms?.version;
+    if (!terms || !note) {
       toast('Describe the change first, then check it against the agreement.');
-      $('#revision-note').focus();
       return;
     }
+    const snapshot = { id: demo ? 'scope-demo' : id, note, version },
+      ticket = scopeGate.start(snapshot);
+    const current = () => ({
+      id: snapshot.id,
+      note: $('#revision-note')?.value.trim(),
+      version: demo ? demoTerms.version : state.applications.find(x => x.id === id)?.terms?.version,
+    });
     b.disabled = true;
     b.textContent = 'Checking the agreement…';
     scopeCheck = null;
+    $('#scope-result').textContent = 'Gemma is comparing this request with the agreement…';
     try {
-      const result = await checkScope(a.terms, note);
-      if (!b.isConnected || state.applications.find(x => x.id === id)?.terms.version !== version)
-        return;
-      scopeCheck = { id, note, version, result };
+      const result = await checkScope(terms, note);
+      if (!b.isConnected || !scopeGate.current(ticket, current())) return;
+      if (!demo) scopeCheck = { id, note, version, result };
       $('#scope-result').innerHTML = scopeHTML(result, true);
+      const rewriteHint = $('#scope-fix-summary .form-hint');
+      if (rewriteHint)
+        rewriteHint.textContent =
+          'Recheck complete. Review the rewritten request before sending. The agreement has not changed and nothing has been sent.';
     } catch (err) {
-      if (b.isConnected)
+      if (b.isConnected && scopeGate.current(ticket, current())) {
         $('#scope-result').innerHTML = `<p class="form-hint">${e(err.message)}</p>`;
+        const rewriteHint = $('#scope-fix-summary .form-hint');
+        if (rewriteHint)
+          rewriteHint.textContent =
+            'The rewrite is ready, but its recheck did not finish. Review the wording and try checking again before sending.';
+      }
     } finally {
-      if (b.isConnected) {
+      if (b.isConnected && scopeGate.current(ticket, current())) {
         b.disabled = false;
-        b.textContent = '✧ Check again';
+        b.textContent = '✧ Check scope with Gemma';
       }
     }
     return;
@@ -475,7 +629,7 @@ document.addEventListener('click', async event => {
     b.disabled = true;
     try {
       await enableAI();
-      settings();
+      settings(view === 'settings');
     } catch (err) {
       toast(err.message);
       b.disabled = false;
@@ -511,7 +665,21 @@ document.addEventListener('click', async event => {
     toast('Sample workspace reset.');
   }
 });
+function invalidateScope() {
+  scopeGate.invalidate();
+  scopeCheck = null;
+  scopeUndo = null;
+  document.querySelector('#scope-fix-summary')?.remove();
+  const result = $('#scope-result');
+  if (result) result.textContent = 'Request changed. Run a fresh scope check for this wording.';
+  const button = $('#revision-note')?.closest('form')?.querySelector('[data-action="scope-check"]');
+  if (button) {
+    button.disabled = false;
+    button.textContent = '✧ Check updated request';
+  }
+}
 document.addEventListener('input', event => {
+  if (event.target.id === 'revision-note') invalidateScope();
   if (event.target.id === 'search') {
     search = event.target.value;
     renderCards();

@@ -3,12 +3,14 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Local creator collaboration workspace with on-device Gemma and Backboard campaign memory.",
+  "description": "Local creator collaboration workspace with hosted open-weight Gemma and scope-creep checks.",
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test tests/*.test.mjs",
     "check": "node --check dist/app.js && node --check dist/ai.mjs && node --check server.mjs",
-    "format": "npx prettier@3.3.3 --write ."
+    "format": "npx prettier@3.3.3 --write .",
+    "eval:scope": "node scripts/eval-scope.mjs",
+    "sync:sites": "node scripts/sync-sites.mjs"
   },
   "engines": {
     "node": ">=22.18.0"

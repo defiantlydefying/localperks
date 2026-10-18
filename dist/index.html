@@ -20,7 +20,7 @@
   </head>
   <body>
     <header class="app-header">
-      <a class="brand" href="#" aria-label="LocalPerks home"
+      <a class="brand" href="#" aria-label="LocalPerks home" data-home
         ><span class="brand-mark">lp<span>✳</span></span
         ><span class="brand-word">localperks</span></a
       ><button
@@ -77,29 +77,32 @@
           ><span class="side-label">Gemma studio<span class="side-tag">AI</span></span></button
         ><button
           class="side-link"
-          data-action="new"
+          data-view="brief-tool"
           aria-label="Draft a brief"
           title="Draft a brief"
         >
           <span class="side-icon">✎</span><span class="side-label">Draft a brief</span></button
         ><button
           class="side-link"
-          data-action="caption-check"
+          data-view="caption-tool"
           aria-label="Review a caption"
           title="Review a caption"
         >
           <span class="side-icon">✓</span><span class="side-label">Review a caption</span>
         </button>
       </nav>
+      <button
+        class="side-link"
+        data-view="scope-tool"
+        aria-label="Try scope check"
+        title="Try scope check"
+      >
+        <span class="side-icon">⇄</span><span class="side-label">Try scope check</span>
+      </button>
       <div class="sidebar-bottom">
-        <button class="side-link" data-action="settings" aria-label="Settings" title="Settings">
+        <button class="side-link" data-view="settings" aria-label="Settings" title="Settings">
           <span class="side-icon">⚙</span><span class="side-label">Settings</span></button
-        ><button
-          class="side-link"
-          data-action="about"
-          aria-label="How it works"
-          title="How it works"
-        >
+        ><button class="side-link" data-view="about" aria-label="How it works" title="How it works">
           <span class="side-icon">?</span><span class="side-label">How it works</span></button
         ><button
           class="side-link collapse-sidebar"

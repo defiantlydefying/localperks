@@ -1,6 +1,7 @@
+import { publicRequestURL } from './lib/public-origin.mjs';
 import { createServer } from 'node:http';
 import { createInferenceHandler } from './lib/inference.mjs';
-const inference = createInferenceHandler();
+const inference = createInferenceHandler({ onTrace: trace => console.info(JSON.stringify(trace)) });
 import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import { resolve, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -98,7 +99,10 @@ const server = createServer(async (req, res) => {
         options.body = req;
         options.duplex = 'half';
       }
-      const webRequest = new Request(`http://${req.headers.host}${req.url}`, options);
+      const webRequest = new Request(
+        publicRequestURL(req.url, req.headers.host, process.env.PUBLIC_ORIGIN),
+        options,
+      );
       const result = await inference(webRequest, process.env, req.socket.remoteAddress);
       res.writeHead(result.status, Object.fromEntries(result.headers));
       res.end(await result.text());

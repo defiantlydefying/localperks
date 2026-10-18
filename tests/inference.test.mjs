@@ -149,3 +149,30 @@ test('scope check rejects missing agreements and unknown verdicts', async () => 
   );
   assert.equal((await handle(scopeRequest('Fix the tag'), env, 't')).status, 502);
 });
+test('inference traces contain metadata but no prompts, responses, or credentials', async () => {
+  const traces = [];
+  const handle = createInferenceHandler({
+    fetchImpl: async () =>
+      Response.json({
+        message: { content: JSON.stringify(output) },
+        prompt_eval_count: 42,
+        eval_count: 21,
+      }),
+    onTrace: t => traces.push(t),
+  });
+  assert.equal((await handle(request(), env, 'private-client-ip')).status, 200);
+  assert.equal(traces.length, 1);
+  assert.equal(traces[0].outcome, 'success');
+  assert.equal(traces[0].promptTokens, 42);
+  for (const secret of [env.OLLAMA_API_KEY, 'Demo Cafe', 'private-client-ip', 'A cafe visit'])
+    assert.ok(!JSON.stringify(traces).includes(secret));
+});
+test('broken telemetry cannot break a successful AI response', async () => {
+  const handle = createInferenceHandler({
+    fetchImpl: async () => answer(),
+    onTrace: () => {
+      throw Error('unavailable');
+    },
+  });
+  assert.equal((await handle(request(), env, 'telemetry')).status, 200);
+});

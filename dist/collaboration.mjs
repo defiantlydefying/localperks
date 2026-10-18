@@ -221,3 +221,19 @@ export function approveWork(application, role) {
   );
   return a;
 }
+
+export function recordRewardDelivery(application, role) {
+  if (role !== 'business' || application.status !== 'Approved' || !agreed(application))
+    throw new Error('The business can record reward delivery after work approval.');
+  if (application.rewardDelivered) throw new Error('Reward delivery is already recorded.');
+  const a = structuredClone(application);
+  a.rewardDelivered = true;
+  a.rewardDeliveredAt = now();
+  event(
+    a,
+    'reward',
+    'business',
+    'Business recorded delivery of the agreed reward outside LocalPerks.',
+  );
+  return a;
+}

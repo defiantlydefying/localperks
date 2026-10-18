@@ -95,3 +95,18 @@ export async function checkScope(terms, note) {
     })
   ).scope;
 }
+
+export async function rewriteScope(terms, note) {
+  return (
+    await request('scope-rewrite', {
+      terms: {
+        deliverables: terms.deliverables,
+        reward: terms.reward,
+        deadline: terms.deadline,
+        usageRights: terms.usageRights,
+        revisions: terms.revisions,
+      },
+      note,
+    })
+  ).rewrite;
+}
